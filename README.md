@@ -13,7 +13,7 @@ Pow(Sin(PI / 3), 2) + Pow(Cos(PI / 3), 2) | 1<br>
 Tg(Pi / 3) * Ctg(PI / 3) | 1<br>
 Pow(3, Log(27, 3)) | 27<br>
 Pow(10, Lg(1000) | 1000<br>
-Pow(e, Ln(3)) | 20.0855369231876677409285296545817178969879078385541<br>
+Ln(Exp(3)) | 3<br>
 
 Function | Result | Time
 --- | --- | ---
