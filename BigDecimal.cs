@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Numerics;
 
@@ -57,24 +57,27 @@ namespace AMath
                     mantissa = left.mantissa * BigInteger.Pow(10, Precision * 2 + SubPrecision * 2) / right.mantissa,
                     exponenta = left.exponenta - right.exponenta + Precision * 2 + SubPrecision * 2
                 }.Simplify();
+                
+            public static BigDecimal operator %(BigDecimal left, BigDecimal right) =>
+                left - right * Truncate(left / right);
 
             public static bool operator <(BigDecimal left, BigDecimal right) =>
                 (left - right).Sign < 0;
 
             public static bool operator <=(BigDecimal left, BigDecimal right) =>
-                (left - right).Sign <= 0;
+                (left - right).Sign <= 0 || left == right;
 
             public static bool operator >(BigDecimal left, BigDecimal right) =>
                 (left - right).Sign > 0;
 
             public static bool operator >=(BigDecimal left, BigDecimal right) =>
-                (left - right).Sign >= 0;
+                (left - right).Sign >= 0 || left == right;
 
             public static bool operator ==(BigDecimal left, BigDecimal right) =>
-                (left - right).mantissa == 0;
+                !(left - right > Epsilon);
 
             public static bool operator !=(BigDecimal left, BigDecimal right) =>
-                (left - right).mantissa != 0;
+                left - right > Epsilon;
 
             public static BigDecimal operator -(BigDecimal value) =>
                 -1 * value;

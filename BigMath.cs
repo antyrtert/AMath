@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -92,7 +92,7 @@ namespace AMath
         }
 
         public static BigDecimal Cos(BigDecimal radians) =>
-            Sin(radians + PI * 0.5m);
+            Sin(PI * 0.5m - radians);
 
         public static BigDecimal Tg(BigDecimal radians) =>
             Sin(radians) / Cos(radians);
@@ -150,7 +150,7 @@ namespace AMath
 
 		private static BigDecimal LogE(BigDecimal value)
 		{
-			if (value == 0) return null;
+			if (value <= 0) return null;
             BigDecimal z = (value - 1) / (value + 1);
             BigDecimal result = z, prev = 0;
 
@@ -168,7 +168,7 @@ namespace AMath
         {
             BigDecimal result = 1, prev = 0;
             int i = 1, pow = 1;
-
+            
             while (value > 2)
             {
                 value *= 0.5m;
@@ -185,7 +185,11 @@ namespace AMath
         }
 
         public static BigDecimal Pow(BigDecimal value, BigDecimal power) =>
-            Exp(power * Ln(value));
+            power == 0 ? 1 :
+            (Abs(power) > 1 ? Truncate(power, Precision).mantissa.IsEven
+                            : Round(1 / power).mantissa.IsEven)
+            ? (value.Sign > 0 ? Exp(power * Ln(value)) : null)
+            : value.Sign * Exp(power * Ln(Abs(value)));
 
 		
         private static BigDecimal Pow(BigDecimal value, BigInteger power)
