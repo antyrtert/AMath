@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -34,16 +34,20 @@ namespace AMath
         {
             BigInteger max = value;
             foreach (BigInteger prime in primes)
-                if (prime > max) return true;
-                else if (value % prime == 0) return false;
-                else max = value / prime + 1;
+                if (prime > (max = BigInteger.DivRem(value, prime, out BigInteger rem)) + 1)
+                    return true;
+                else if (rem == 0)
+                    return false;
             return true;
         }
 
-        public static BigInteger Factorial(BigInteger value)
+        public static BigInteger Factorial(BigInteger n)
         {
-            BigInteger result = value;
-            while (--value > 1) result *= value;
+            BigInteger sum = n, result = n;
+            for (BigInteger i = n - 2; i > 1; i -= 2)
+                result *= (sum += i);
+
+            if ((n & 1) == 1) result *= (n >> 1) + 1;
             return result;
         }
 
@@ -74,10 +78,28 @@ namespace AMath
             return pi;
         }
 
+        public static BigDecimal DegreesToRadians(BigDecimal degrees)
+        {
+            while (degrees < -180) degrees += 180;
+            while (degrees > 180) degrees -= 180;
+
+            return PI * degrees / 180;
+        }
+
+        public static BigDecimal RadiansToDegrees(BigDecimal radians)
+        {
+            BigDecimal pi = PI * 0.5m;
+            while (radians < -pi) radians += pi;
+            while (radians > pi) radians -= pi;
+
+            return 180 / (radians * PI);
+        }
+
         public static BigDecimal Sin(BigDecimal radians)
         {
-            while (radians < -PI * 0.5) radians += PI;
-            while (radians > PI * 0.5) radians -= PI;
+            BigDecimal pi = PI * 0.5m;
+            while (radians < -pi) radians += pi;
+            while (radians > pi) radians -= pi;
 
             BigDecimal sin = radians, prev = 0;
 
@@ -95,26 +117,25 @@ namespace AMath
             Sin(PI * 0.5m - radians);
 
         public static BigDecimal Tg(BigDecimal radians) =>
-            Sin(radians) / Cos(radians);
+            radians % (PI * 0.5m) != 0 ? Sin(radians) / Cos(radians) : null;
 
         public static BigDecimal Ctg(BigDecimal radians) =>
-            Cos(radians) / Sin(radians);
+            radians % PI != 0 ? Cos(radians) / Sin(radians) : null;
 
         public static BigDecimal ArcSin(BigDecimal value)
         {
             if (Abs(value) > 1) return null;
-
-            BigDecimal arcsin = value, prev = 0;
+            BigDecimal result = value, prev = 0;
 
             int i = 0;
-            while (Abs(arcsin - prev) > Epsilon)
+            while (Abs(result - prev) > Epsilon)
             {
-                prev = arcsin;
-                arcsin += Factorial(2 * ++i) * Pow(value, 2 * i + 1) /
+                prev = result;
+                result += Factorial(2 * ++i) * Pow(value, 2 * i + 1) /
                     (((BigInteger)1 << 2 * i) * Pow(Factorial(i), 2) * (2 * i + 1));
             }
 
-            return arcsin;
+            return result;
         }
 
         public static BigDecimal ArcCos(BigDecimal value) =>
@@ -126,25 +147,31 @@ namespace AMath
         public static BigDecimal Lg(BigDecimal Value) =>
             Value == 0 ? null : Ln(Value) / Ln(10);
 
-        public static int Log10(BigInteger value)
+        public static int Log2(BigInteger value)
         {
-            int result = 0;
-			while (BigInteger.Abs(value) > 0)
-			{
-				result++;
-			 	value /= 10;
-			}
-			return result;
+            value = BigInteger.Abs(value);
+            int result = value.ToByteArray().Length * 8 - 8;
+            if (result < 0) result = 0;
+            value >>= result;
+            while (value != 0)
+            {
+                result++;
+                value >>= 1;
+            }
+            return result;
         }
+
+        public static int Log10(BigInteger value) =>
+            (int)BigInteger.Log10(BigInteger.Abs(value));
 
         public static BigDecimal Log(BigDecimal Value, BigDecimal Base) =>
             Value == 0 ? null : Ln(Value) / Ln(Base);
 
         public static BigDecimal Ln(BigDecimal value)
         {
-			int log10 = Log10((BigInteger)value);
-            if (log10 != 0)
-				return log10 * LogE(10) + LogE(value / BigInteger.Pow(10, log10));
+			int log2 = Log2((BigInteger)value) - 1;
+            if (log2 > 0)
+				return log2 * LogE(2) + LogE(value / ((BigInteger)1 << log2));
 			return LogE(value);
         }
 
@@ -192,18 +219,16 @@ namespace AMath
             : value.Sign * Exp(power * Ln(Abs(value)));
 
 		
-        private static BigDecimal Pow(BigDecimal value, BigInteger power)
+        public static BigDecimal Pow(BigDecimal value, BigInteger power)
         {
             BigDecimal result = 1;
             bool negative = power < 0;
-            power = BigInteger.Abs(power);
+            power = BigInteger.Abs(power) << 1;
 
-            while (power > 0)
+            while ((power >>= 1) > 0)
             {
                 if ((power & 1) == 1)
                     result *= value;
-
-                power >>= 1;
                 value *= value;
             }
 
@@ -211,19 +236,16 @@ namespace AMath
         }
 
         public static BigDecimal Sqrt(BigDecimal value) =>
-            new BigDecimal()
-            {
-                mantissa = Sqrt(value.mantissa * BigInteger.Pow(10, Precision * 2 + 2 * SubPrecision + (value.exponenta & 1))),
-                exponenta = (value.exponenta >> 1) + Precision + SubPrecision + (value.exponenta & 1)
-            }.Simplify();
+            value < 0 ? null : new BigDecimal(
+                Sqrt(value.mantissa * BigInteger.Pow(10, Precision * 2 + 2 * SubPrecision + (value.exponenta & 1))),
+                (value.exponenta >> 1) + Precision + SubPrecision + (value.exponenta & 1)
+            ).Simplify();
 
         public static BigInteger Sqrt(BigInteger value)
         {
+            if (value.Sign < 0) return -1;
             if (value <= 4503599761588223UL)
-            {
-                if (value.Sign < 0) throw new ArgumentException("Negative argument.");
                 return (ulong)Math.Sqrt((ulong)value);
-            }
 
             BigInteger root;
             int byteLen = value.ToByteArray().Length;
@@ -239,12 +261,8 @@ namespace AMath
             }
         }
 
-        private static bool IsSqrt(BigInteger value, BigInteger root)
-        {
-            var lowerBound = root * root;
-
-            return value >= lowerBound && value <= lowerBound + (root << 1);
-        }
+        private static bool IsSqrt(BigInteger value, BigInteger root) =>
+            value >= root * root && value <= root * root + (root << 1);
 
         public static BigDecimal Abs(BigDecimal value) =>
             value.Sign * value;
@@ -255,14 +273,23 @@ namespace AMath
         public static BigDecimal Round(BigDecimal value, int precision) =>
             value.Sign * Truncate(Truncate(Abs(value), precision + 1) + new BigDecimal(5, precision + 1), precision);
 
+        public static BigDecimal Ceil(BigDecimal value) =>
+            Ceil(value, 0);
+
+        public static BigDecimal Ceil(BigDecimal value, int precision) =>
+            Truncate(Truncate(value, precision + 1) + new BigDecimal(5, precision + 1), precision);
+
+        public static BigDecimal Floor(BigDecimal value) =>
+            Floor(value, 0);
+
+        public static BigDecimal Floor(BigDecimal value, int precision) =>
+            Truncate(Truncate(value, precision + 1) - new BigDecimal(5, precision + 1), precision);
+
         public static BigDecimal Truncate(BigDecimal value) =>
             Truncate(value, 0);
 
         public static BigDecimal Truncate(BigDecimal value, int precision) =>
-            precision >= value.exponenta ? value : new BigDecimal()
-            {
-                mantissa = value.mantissa / BigInteger.Pow(10, value.exponenta - precision),
-                exponenta = precision
-            };
+            precision >= value.exponenta ? value : new BigDecimal(
+                value.mantissa / BigInteger.Pow(10, value.exponenta - precision), precision);
     }
 }
