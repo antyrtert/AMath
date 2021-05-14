@@ -7,11 +7,30 @@ namespace AMath
 {
     public static partial class BigMath
     {
-        public static int Precision = 32;
-        public static int SubPrecision = 16;
+        /// <summary>
+        /// Max showing decimal part length.
+        /// </summary>
+        public static int Precision { get => precision;  set => precision = value < 0 ? 0 : value; }
+        private static int precision = 32;
+        /// <summary>
+        /// Max invisible decimal part length.
+        /// </summary>
+        public static int SubPrecision { get => subPrecision;  set => subPrecision = value < 0 ? 0 : value; }
+        private static int subPrecision = 16;
 
+        /// <summary>
+        /// Represents the smallest positive BigDecimal value that is greater then zero.
+        /// </summary>
         public static BigDecimal Epsilon => new BigDecimal(1, Precision + (SubPrecision >> 1));
+        /// <summary>
+        /// Represents the ratio of the circumreference to its diameter, specified by the constant, π.
+        /// </summary>
+        /// <value>Gets the value of PI.</value>
         public static BigDecimal PI => GetPI();
+        /// <summary>
+        /// Represents the natural logarithmic base, specified by the constant e.
+        /// </summary>
+        /// <value>Gets the value of E.</value>
         public static BigDecimal E => Exp(1);
 
         private static readonly List<BigInteger> primes = new List<BigInteger>() { 2, 3, 5, 7 };
@@ -95,6 +114,9 @@ namespace AMath
             return 180 / (radians * PI);
         }
 
+        /// <summary>
+        /// Returns the sine of the specified angle.
+        /// </summary>
         public static BigDecimal Sin(BigDecimal radians)
         {
             BigDecimal pi = PI * 0.5m;
@@ -113,15 +135,29 @@ namespace AMath
             return sin;
         }
 
+        /// <summary>
+        /// Returns the cosine of the specified angle.
+        /// </summary>
         public static BigDecimal Cos(BigDecimal radians) =>
             Sin(PI * 0.5m - radians);
 
+        /// <summary>
+        /// Returns the tangent of specified angle.
+        /// </summary>
+        /// <value>Sin / Cos</value>
         public static BigDecimal Tg(BigDecimal radians) =>
             radians % (PI * 0.5m) != 0 ? Sin(radians) / Cos(radians) : null;
 
+        /// <summary>
+        /// Returns the cotangent of specified angle.
+        /// </summary>
+        /// <value>Cos / Sin</value>
         public static BigDecimal Ctg(BigDecimal radians) =>
             radians % PI != 0 ? Cos(radians) / Sin(radians) : null;
 
+        /// <summary>
+        /// Returns the angle of specified sine value.
+        /// </summary>
         public static BigDecimal ArcSin(BigDecimal value)
         {
             if (Abs(value) > 1) return null;
@@ -137,7 +173,10 @@ namespace AMath
 
             return result;
         }
-
+        
+        /// <summary>
+        /// Returns the angle of specified cosine value.
+        /// </summary>
         public static BigDecimal ArcCos(BigDecimal value) =>
             PI * 0.5m - ArcSin(value);
 
@@ -147,29 +186,18 @@ namespace AMath
         public static BigDecimal Lg(BigDecimal Value) =>
             Value == 0 ? null : Ln(Value) / Ln(10);
 
-        public static int Log2(BigInteger value)
-        {
-            value = BigInteger.Abs(value);
-            int result = value.ToByteArray().Length * 8 - 8;
-            if (result < 0) result = 0;
-            value >>= result;
-            while (value != 0)
-            {
-                result++;
-                value >>= 1;
-            }
-            return result;
-        }
+        public static long Log2(BigInteger value) =>
+            value.GetBitLength();
 
-        public static int Log10(BigInteger value) =>
-            (int)BigInteger.Log10(BigInteger.Abs(value));
+        public static long Log10(BigInteger value) =>
+            (long)BigInteger.Log10(BigInteger.Abs(value));
 
         public static BigDecimal Log(BigDecimal Value, BigDecimal Base) =>
             Value == 0 ? null : Ln(Value) / Ln(Base);
 
         public static BigDecimal Ln(BigDecimal value)
         {
-			int log2 = Log2((BigInteger)value) - 1;
+			int log2 = (int)Log2((BigInteger)value) - 1;
             if (log2 > 0)
 				return log2 * LogE(2) + LogE(value / ((BigInteger)1 << log2));
 			return LogE(value);
@@ -237,8 +265,8 @@ namespace AMath
 
         public static BigDecimal Sqrt(BigDecimal value) =>
             value < 0 ? null : new BigDecimal(
-                Sqrt(value.mantissa * BigInteger.Pow(10, Precision * 2 + 2 * SubPrecision + (value.exponenta & 1))),
-                (value.exponenta >> 1) + Precision + SubPrecision + (value.exponenta & 1)
+                Sqrt(value.mantissa * BigInteger.Pow(10, Precision * 2 + 2 * SubPrecision + (value.exponent & 1))),
+                (value.exponent >> 1) + Precision + SubPrecision + (value.exponent & 1)
             ).Simplify();
 
         public static BigInteger Sqrt(BigInteger value)
@@ -289,7 +317,27 @@ namespace AMath
             Truncate(value, 0);
 
         public static BigDecimal Truncate(BigDecimal value, int precision) =>
-            precision >= value.exponenta ? value : new BigDecimal(
-                value.mantissa / BigInteger.Pow(10, value.exponenta - precision), precision);
+            precision >= value.exponent ? value : new BigDecimal(
+                value.mantissa / BigInteger.Pow(10, value.exponent - precision), precision);
+
+        public static BigDecimal Max(params BigDecimal[] values)
+        {
+            BigDecimal max = values[0];
+
+            for (int i = 1; i < values.Length; i++)
+                if (values[i] > max) max = values[i];
+
+            return max;
+        }
+        
+        public static BigDecimal Min(params BigDecimal[] values)
+        {
+            BigDecimal min = values[0];
+
+            for (int i = 1; i < values.Length; i++)
+                if (values[i] < min) min = values[i];
+
+            return min;
+        }
     }
 }
