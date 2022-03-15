@@ -9,20 +9,17 @@ namespace AMath
         public class BigDecimal : IComparable
         {
             public BigInteger mantissa;
-            public int exponenta = 0;
+            /// <summary>
+            /// Power of 10
+            /// </summary>
+            public int exponent = 0;
 
             public int Sign => mantissa.Sign;
-            public bool IsNan = false;
 
-            public BigDecimal()
-            {
-                IsNan = true;
-            }
-
-            public BigDecimal(BigInteger mantissa, int exponenta)
+            public BigDecimal(BigInteger mantissa, int exponent)
             {
                 this.mantissa = mantissa;
-                this.exponenta = exponenta;
+                this.exponent = exponent;
             }
 
             public static BigDecimal operator ++(BigDecimal value) =>
@@ -34,33 +31,33 @@ namespace AMath
             public static BigDecimal operator +(BigDecimal left, BigDecimal right) =>
                 ReferenceEquals(left, null) || ReferenceEquals(right, null) ? null :
                 new BigDecimal(
-                    left.exponenta > right.exponenta 
-                        ? left.mantissa + right.mantissa * BigInteger.Pow(10, left.exponenta - right.exponenta)
-                        : left.mantissa * BigInteger.Pow(10, right.exponenta - left.exponenta) + right.mantissa,
-                    left.exponenta > right.exponenta ? left.exponenta : right.exponenta
+                    left.exponent > right.exponent 
+                        ? left.mantissa + right.mantissa * BigInteger.Pow(10, left.exponent - right.exponent)
+                        : left.mantissa * BigInteger.Pow(10, right.exponent - left.exponent) + right.mantissa,
+                    left.exponent > right.exponent ? left.exponent : right.exponent
                 ).Simplify();
 
             public static BigDecimal operator -(BigDecimal left, BigDecimal right) =>
                 ReferenceEquals(left, null) || ReferenceEquals(right, null) ? null :
                 new BigDecimal(
-                    left.exponenta > right.exponenta 
-                        ? left.mantissa - right.mantissa * BigInteger.Pow(10, left.exponenta - right.exponenta)
-                        : left.mantissa * BigInteger.Pow(10, right.exponenta - left.exponenta) - right.mantissa,
-                    left.exponenta > right.exponenta ? left.exponenta : right.exponenta
+                    left.exponent > right.exponent 
+                        ? left.mantissa - right.mantissa * BigInteger.Pow(10, left.exponent - right.exponent)
+                        : left.mantissa * BigInteger.Pow(10, right.exponent - left.exponent) - right.mantissa,
+                    left.exponent > right.exponent ? left.exponent : right.exponent
                 ).Simplify();
 
             public static BigDecimal operator *(BigDecimal left, BigDecimal right) =>
                 ReferenceEquals(left, null) || ReferenceEquals(right, null) ? null :
                 new BigDecimal(
                     left.mantissa * right.mantissa,
-                    left.exponenta + right.exponenta
+                    left.exponent + right.exponent
                 ).Simplify();
 
             public static BigDecimal operator /(BigDecimal left, BigDecimal right) =>
                 ReferenceEquals(left, null) || ReferenceEquals(right, null) ? null :
                 new BigDecimal(
                     left.mantissa * BigInteger.Pow(10, Precision * 2 + SubPrecision * 2) / right.mantissa,
-                    left.exponenta - right.exponenta + Precision * 2 + SubPrecision * 2
+                    left.exponent - right.exponent + Precision * 2 + SubPrecision * 2
                 ).Simplify();
                 
             public static BigDecimal operator %(BigDecimal left, BigDecimal right) =>
@@ -85,11 +82,11 @@ namespace AMath
 
             public static bool operator ==(BigDecimal left, BigDecimal right) =>
                 ReferenceEquals(left, null) || ReferenceEquals(right, null) ? false :
-                !(left - right > Epsilon);
+                !(Abs(left - right) > Epsilon);
 
             public static bool operator !=(BigDecimal left, BigDecimal right) =>
                 ReferenceEquals(left, null) || ReferenceEquals(right, null) ? true :
-                left - right > Epsilon;
+                Abs(left - right) > Epsilon;
 
             public static BigDecimal operator -(BigDecimal value) =>
                 ReferenceEquals(value, null) ? null :
@@ -97,9 +94,9 @@ namespace AMath
             
             public static explicit operator BigInteger(BigDecimal value) =>
                 ReferenceEquals(value, null) ? new BigInteger() :
-                value.exponenta > 0
-                ? value.mantissa / BigInteger.Pow(10, value.exponenta)
-                : value.mantissa * BigInteger.Pow(10, -value.exponenta);
+                value.exponent > 0
+                ? value.mantissa / BigInteger.Pow(10, value.exponent)
+                : value.mantissa * BigInteger.Pow(10, -value.exponent);
 
             public static implicit operator BigDecimal(int value) =>
                 new BigDecimal(value, 0).Simplify();
@@ -149,14 +146,14 @@ namespace AMath
                 BigDecimal v = Truncate(this, Precision + SubPrecision);
 
                 if (mantissa.IsZero)
-                    exponenta = 0;
+                    exponent = 0;
                 else
                 {
                     BigInteger shortened = BigInteger.DivRem(mantissa, 10, out BigInteger remainder);
                     while (remainder == 0)
                     {
                         mantissa = shortened;
-                        exponenta--;
+                        exponent--;
                         shortened = BigInteger.DivRem(mantissa, 10, out remainder);
                     }
                 }
@@ -174,7 +171,23 @@ namespace AMath
                 return BigInteger.TryParse(input.Replace(".", ""), out BigInteger mantissa) ?
                 new BigDecimal(
                     mantissa, input.Contains('.') ? input.Length - input.IndexOf('.') - 1 : 0
-                ).Simplify() : null;
+                ).Simplify() : throw new ArgumentException();
+            }
+
+            public string ToFullString()
+            {
+                BigDecimal value = this;
+                string result = value.mantissa.ToString(),
+                       Sign = (this.Sign < 0 ? "-" : "");
+                if (value.exponent > 0)
+                {
+                    result = result.PadLeft(value.exponent + 1, '0');
+                    result = (result.Insert(result.Length - value.exponent, ".")
+                        + new string('0', Precision));
+
+                    return Sign + result.TrimEnd('0').TrimEnd('.');
+                }
+                return Sign + result + new string('0', -value.exponent);
             }
 
             public override string ToString()
@@ -182,23 +195,23 @@ namespace AMath
                 BigDecimal value = Round(Abs(this), Precision);
                 string result = value.mantissa.ToString(),
                        Sign = (this.Sign < 0 ? "-" : "");
-                if (value.exponenta > 0)
+                if (value.exponent > 0)
                 {
-                    result = result.PadLeft(value.exponenta + 1, '0');
-                    result = (result.Insert(result.Length - value.exponenta, ".")
+                    result = result.PadLeft(value.exponent + 1, '0');
+                    result = (result.Insert(result.Length - value.exponent, ".")
                         + new string('0', Precision))
-                        .Remove(result.Length - value.exponenta + Precision);
+                        .Remove(result.Length - value.exponent + Precision);
 
                     return Sign + result.TrimEnd('0').TrimEnd('.');
                 }
-                return Sign + result + new string('0', -value.exponenta);
+                return Sign + result + new string('0', -value.exponent);
             }
 
             public override bool Equals(object obj) =>
                 !ReferenceEquals(obj, null)
                 && obj is BigDecimal other 
                 && mantissa == other.mantissa 
-                && exponenta == other.exponenta;
+                && exponent == other.exponent;
 
             public override int GetHashCode() =>
                 base.GetHashCode();
