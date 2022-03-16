@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 using AMath;
 
-namespace Debug
+namespace Debugger
 {
     class Program
     {
